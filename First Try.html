@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>The Vancouver Knowledge Map – WCB 2026</title>
+  <style>
+    :root {
+      --bg: #06080f;
+      --panel: rgba(12, 16, 28, 0.82);
+      --panel2: rgba(10, 14, 24, 0.92);
+      --text: #e8ecff;
+      --muted: rgba(232,236,255,0.72);
+      --emerald: #19d3a2; /* Vancouver Emerald */
+      --blue: #2aa8ff;    /* Electric Blue */
+      --danger: #ff4d6d;
+      --shadow: 0 20px 60px rgba(0,0,0,0.55);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% 10%, rgba(42,168,255,0.14), transparent 60%),
+                  radial-gradient(1000px 700px at 70% 80%, rgba(25,211,162,0.12), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* Top HUD */
+    .hud {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(to bottom, rgba(6,8,15,0.92), rgba(6,8,15,0.55));
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .hud-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 240px;
+    }
+    .title .kicker {
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .title .name {
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+    .progress {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      justify-content: center;
+    }
+    .counter {
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .bar {
+      width: min(420px, 48vw);
+      height: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .bar > div {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--blue), var(--emerald));
+      box-shadow: 0 0 18px rgba(42,168,255,0.35);
+      transition: width 350ms ease;
+    }
+
+    .hud-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-end;
+      min-width: 260px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 120ms ease, filter 120ms ease, border-color 160ms ease;
+    }
+    button:hover { filter: brightness(1.08); border-color: rgba(255,255,255,0.22); }
+    button:active { transform: translateY(1px); }
+    .btn-emerald {
+      border-color: rgba(25,211,162,0.35);
+      background: rgba(25,211,162,0.12);
+    }
+    .btn-blue {
+      border-color: rgba(42,168,255,0.35);
+      background: rgba(42,168,255,0.10);
+    }
+
+    /* Layout */
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    @media (max-width: 980px) {
+      .wrap { grid-template-columns: 1fr; }
+      .hud-inner { flex-wrap: wrap; justify-content: center; }
+      .hud-actions { min-width: unset; }
+      .title { min-width: unset; align-items: center; text-align: center; }
+    }
+
+    /* Map */
+    .map-card {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,0.10);
+      background: var(--panel);
+      min-height: 560px;
+    }
+
+    .map {
+      position: relative;
+      width: 100%;
+      height: 620px;
+      background:
+        radial-gradient(700px 520px at 45% 40%, rgba(42,168,255,0.10), transparent 60%),
+        radial-gradient(650px 520px at 70% 70%, rgba(25,211,162,0.10), transparent 60%),
+        url("Vancouver.png");
+      background-size: cover;
+      background-position: center;
+      filter: saturate(1.05) contrast(1.05);
+    }
+
+    /* subtle grid overlay */
+    .map::before {
+      content:"";
+      position:absolute; inset:0;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,0.045) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.045) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: 0.35;
+      mix-blend-mode: screen;
+      pointer-events:none;
+    }
+
+    .map::after {
+      content:"";
+      position:absolute; inset:-2px;
+      background: radial-gradient(800px 600px at 50% 50%, transparent 40%, rgba(6,8,15,0.70) 100%);
+      pointer-events:none;
+    }
+
+    .node {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(42,168,255,0.35);
+      box-shadow:
+        0 0 0 0 rgba(42,168,255,0.0),
+        0 0 18px rgba(42,168,255,0.55),
+        0 0 40px rgba(42,168,255,0.20);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    .node:hover {
+      filter: brightness(1.2);
+      border-color: rgba(255,255,255,0.28);
+    }
+
+    .node.unlocked {
+      background: rgba(25,211,162,0.95);
+      border-color: rgba(25,211,162,0.55);
+      box-shadow:
+        0 0 18px rgba(25,211,162,0.55),
+        0 0 40px rgba(25,211,162,0.20);
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 0 0 rgba(42,168,255,0.22), 0 0 18px rgba(42,168,255,0.55), 0 0 40px rgba(42,168,255,0.18); }
+      60% { transform: translate(-50%, -50%) scale(1.25); box-shadow: 0 0 0 14px rgba(42,168,255,0.0), 0 0 20px rgba(42,168,255,0.65), 0 0 60px rgba(42,168,255,0.20); }
+      100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 0 0 rgba(42,168,255,0.0), 0 0 18px rgba(42,168,255,0.55), 0 0 40px rgba(42,168,255,0.18); }
+    }
+
+    .legend {
+      position:absolute;
+      left: 14px;
+      bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(10,14,24,0.65);
+      border: 1px solid rgba(255,255,255,0.10);
+      backdrop-filter: blur(8px);
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      gap: 12px;
+      align-items:center;
+    }
+    .dot {
+      width: 10px; height:10px; border-radius:999px; display:inline-block; margin-right:6px;
+    }
+    .dot.blue { background: rgba(42,168,255,0.75); box-shadow: 0 0 12px rgba(42,168,255,0.45); }
+    .dot.green { background: rgba(25,211,162,0.9); box-shadow: 0 0 12px rgba(25,211,162,0.45); }
+
+    /* Side panel */
+    .panel {
+      border-radius: var(--radius);
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel header {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(135deg, rgba(42,168,255,0.10), rgba(25,211,162,0.06));
+    }
+    .panel header .h {
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
+    .panel header .sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .panel .content {
+      padding: 16px;
+    }
+
+    .card {
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(10,14,24,0.60);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .card .label {
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .card .big {
+      font-size: 16px;
+      font-weight: 900;
+      margin-top: 6px;
+      line-height: 1.2;
+    }
+    .card .meta {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .sessions {
+      margin-top: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .session {
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+    }
+    .session .t {
+      font-weight: 800;
+      font-size: 13.5px;
+      line-height: 1.25;
+    }
+    .session .m {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    /* Modal */
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 18px;
+      background: rgba(0,0,0,0.55);
+      z-index: 50;
+    }
+    .modal.open { display: grid; }
+    .modal-inner {
+      width: min(760px, 96vw);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(10,14,24,0.92);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .modal-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      background: linear-gradient(135deg, rgba(42,168,255,0.14), rgba(25,211,162,0.08));
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .modal-head .track {
+      font-weight: 900;
+    }
+    .modal-body {
+      padding: 16px;
+    }
+    .riddle {
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .answer-row {
+      display:flex;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    input[type="text"] {
+      flex: 1;
+      min-width: 220px;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: rgba(42,168,255,0.45);
+      box-shadow: 0 0 0 3px rgba(42,168,255,0.18);
+    }
+    .msg {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      min-height: 18px;
+    }
+    .msg.bad { color: var(--danger); }
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 86px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      resize: vertical;
+      margin-top: 10px;
+    }
+    .toast {
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      background: rgba(10,14,24,0.92);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      display: none;
+      z-index: 80;
+      max-width: min(420px, 92vw);
+    }
+    .toast.show { display:block; }
+  </style>
+</head>
+
+<body>
+  <div class="hud">
+    <div class="hud-inner">
+      <div class="title">
+        <div class="kicker">WCB 2026 • Vancouver</div>
+        <div class="name">The Vancouver Knowledge Map</div>
+      </div>
+
+      <div class="progress" aria-live="polite">
+        <div class="counter" id="counter">Tracks Decoded: 0/31</div>
+        <div class="bar" aria-hidden="true"><div id="barFill"></div></div>
+      </div>
+
+      <div class="hud-actions">
+        <button class="btn-blue" id="shareBtn" title="Generates a LinkedIn-ready status">Share My Status</button>
+        <button class="btn-emerald" id="resetBtn" title="Clears your progress on this device">Reset Progress</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="map-card">
+      <div class="map" id="map" role="application" aria-label="Interactive Vancouver map with 31 track nodes">
+        <div class="legend">
+          <span><span class="dot blue"></span>Locked node</span>
+          <span><span class="dot green"></span>Unlocked node</span>
+          <span>Click a node → solve a riddle → unlock sessions</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel" aria-live="polite">
+      <header>
+        <div class="h">Mission Control</div>
+        <div class="sub">Click a glowing node to begin. Solve the riddle to unlock that scientific track.</div>
+      </header>
+      <div class="content" id="mission">
+        <div class="card">
+          <div class="label">How it works</div>
+          <div class="big">Decode all 31 tracks</div>
+          <div class="meta">
+            Each node hides a track. Answer the keyword correctly to reveal the real WCB 2026 sessions for that track.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="label">Tip</div>
+          <div class="hint">
+            Keywords are simple and case-insensitive (e.g., <strong>Reynolds</strong>, <strong>AFM</strong>, <strong>laminar</strong>). If you’re close, try the core term.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="label">Share</div>
+          <div class="hint">
+            Use “Share My Status” anytime to generate a LinkedIn-ready line about your progress.
+          </div>
+          <textarea id="shareText" placeholder="Your share text will appear here..."></textarea>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Riddle Modal -->
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modal-inner" role="dialog" aria-modal="true" aria-labelledby="modalTrack">
+      <div class="modal-head">
+        <div>
+          <div class="kicker" style="margin-bottom:4px;">Biomechanics Riddle</div>
+          <div class="track" id="modalTrack">Track</div>
+        </div>
+        <button id="closeModal" title="Close">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="riddle" id="modalRiddle">Riddle text</div>
+
+        <div class="answer-row">
+          <input id="answerInput" type="text" autocomplete="off" placeholder="Type the keyword to unlock…" />
+          <button class="btn-emerald" id="unlockBtn">Unlock</button>
+        </div>
+
+        <div class="msg" id="modalMsg"></div>
+        <div class="small">Hint: one word (or a short abbreviation). Spelling matters, but capitalization doesn’t.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // =========================
+    // 1) DATA (from your Excel)
+    // =========================
+    const TRACK_SESSIONS = {"Biomechanics Education, Knowledge Translation and Outreach": [{"title": "ES3 - Considerations for Designing Engineering Solutions for Diverse Human Use – How Does Truth and Reconciliation and Inclusion efforts fit in?", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "ES4 - Empowerment in Motion: Advancing Biomechanics Through Inclusive Mentorship", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "ES6 - Bringing Biomechanics to the People: Field-Based Measurement Across Contexts, Communities, and Populations", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA112 - 3 MINUTE THESIS", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA116 - The World Celebrates Biomechanics: 10 Years of Outreach Through National Biomechanics Day", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA128 - Biomechanics in Practice: Clinical Translation, Sport Safety, and Society", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA140 - Pedagogy in Motion: Innovations in Biomechanics Education and Training", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "ES1 - Applied Biomechanics in Latin America: Outcomes that Advance Science while Supporting Communities", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "ES2 - Breaking the Data Deadlock: Fast-Track Debates on Kinematic Data Sharing in Biomechanics", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Cardiovascular/Cardiorespiratory Biomechanics: Materials and Devices": [{"title": "OA4 - Aneurysms", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA89 - Cardiac Valve Devices", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA102 - Stent Modeling", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA115 - Cerebral Devices and Procedures", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA127 - Carotid and Aortic Devices", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA139 - Arterial Devices", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}], "Cardiovascular/Cardiorespiratory Biomechanics: Methods, Models and Applications": [{"title": "OA17 - Atherosclerosis", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA30 - Cardiac Biomechanics #1", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA43 - Cardiac Biomechanics #2", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA56 - Cardiac Biomechanics #3", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA69 - Computational Fluid Dynamics #1", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA82 - Computational Fluid Dynamics #2", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA95 - Computational Fluid Dynamics #3", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA108 - Growth and Remodeling", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA120 - Heart Valves 1", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA132 - Heart Valves 2", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA144 - Image Based Cardiovascular Biomechanics", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA146 - Vascular Mechanics", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA156 - Image Based Cardiovascular Biomechanics", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA157 - Thrombosis", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA167 - AI in Cardiovascular Biomechanics 1", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA179 - AI in Cardiovascular Biomechanics 2", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA191 - AI in Cardiovascular Biomechanics 3", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Cell Biomechanics: Mechanobiology": [{"title": "OA75 - Mechanobiology of Cancer", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA88 - Mechanoregulation of Immune Cells", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA101 - Mechanoregulation of Collective Phenomena", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA114 - Mechanoregulation of the ECM-Cell Crosstalk I", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA126 - Mechanoregulation of the ECM-Cell Crosstalk II", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA138 - Emerging Tools to Probe Mechanobiological Processes", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}], "Cell Biomechanics: Methods and Models": [{"title": "OA152 - Modeling Cellular Biological Systems", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA164 - Computational Methods in Cell Mechanics", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA176 - Experimental Cell Biology with Physical Modelling", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}], "Clinical Biomechanics": [{"title": "OA1 - Neuromechanics", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA14 - Clinical Practice - Upper Extremity", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA27 -  Neurologic Medicine - Cerebral Palsy", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA40 - Neurodegenerative Medicine - Alzheimer’s and Other Dementias", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "ES7 - Rigor, Repeatability, & FUN in Pediatric Biomechanics", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA53 - Neurologic Medicine - Stroke", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "ES8 - Revisiting Priorities in Locomotion Research for Clinical Impact", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA66 - Neurologic Medicine - Limb Loss", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA79 - Neurologic Medicine - Cancer and Diabetes", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA92 - Neurodegenerative Medicine - PD, MS, ET", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA105 - Clinical Practice - Hip", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA117 - Clinical Practice - Knee OA", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA129 - Clinical Practice ACL 1", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA141 - Clinical Practice - ACL 2", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA153 - Emerging Areas of Clinical Biomechanics", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA165 - Groundbreaking Normative Studies 1", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA177 - Groundbreaking Normative Studies 2", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA189 - Groundbreaking Normative Studies 3", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Comparative Biomechanics": [{"title": "OA12 - Comparative Neuromuscular Function", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA103 - Comparative Locomotor Biomechanics", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}], "Emerging Areas": [{"title": "OA9 - Clinical Outcome Prediction", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA22 - Bioinspired Design and Physics-Informed Machine Learning", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA35 - AI and Machine Learning for Biomechanics", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA48 - Wearable Sensors, AI, and Advanced Analytics", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA61 - Computer Vision Methods for Biomechanics", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA74 - Emerging Imaging Techniques for Biomechanics", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "ES9 - Women’s Health Biomechanics: The Engineering Perspective", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "ES10 - Data-Driven Innovation in Para Sport: Optimizing the Athlete-Equipment Interface", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}], "Human Motion and Performance: Balance, Posture and Control": [{"title": "OA124 - Human-Environmental Interactions Related to Balance and Postural Control", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA136 - Simulating Human Balance: Advances in Musculoskeletal and Neuromechanical Modeling", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA148 - Technological Advances for Monitoring and Enhancing Balance: from Wearables and AI to Virtual Reality", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA160 - Developmental and Age-Related Changes in the Dynamics of Balance and Posture", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA172 - Prevention of Injuries from Falls", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA184 - Assistive Devices for Enhancing Balance in Humans", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA196 - Neuromechanics of Balance and Postural Control", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Human Motion and Performance: Locomotion/Gait": [{"title": "OA2 - Escaping the Laboratory 1: Markerless Gait Analysis", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA15 - Escaping the Laboratory 2: Gait Analysis With Wearable Sensors", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA28 - Improving Our Methods 1: Measuring Muscle-Tendon Dynamics During Gait", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA41 - Improving Our Methods 2: Personalization of Neuro-Musculo-Skeletal-Joint Models for Gait Analysis", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA54 - Improving Our Methods 3: Biomechanics Informing Artificial Intelligence for Gait Analysis", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA67 - Exoskeleton-Assisted Gait", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA80 - Gait of Individuals with Limb Loss", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA93 - Technology Assisted Gait", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA106 - Cognition and Gait", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA118 - Neurosensory Control of Gait", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA130 - Gait and Falls in Older Adults", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA142 - Running", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA154 - Low-Gravity Gait", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA166 - Energetics of Gait", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA178 - Foot and Footwear Biomechanics During Gait", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA190 - Sex Differences", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Human Motion and Performance: Sports": [{"title": "OA3 - Footwear Session 1", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA16 - Footwear Session 2", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA29 - Upper Extremity", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA42 - Field Assessment", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA55 - Winter", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA68 - Lower Extremity", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA81 - Ankles and Tendons", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA94 - Machine Learning Predictions", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA107 - Assessment to Predict Performance", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA119 - Baseball", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA131 - Cycling and Golf", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA143 - Breast Health in Athletes", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA155 - Team and Water Sports", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}], "Imaging and Biomedical Devices: Artificial Organs, Devices": [{"title": "OA25 - Life Support Systems/Devices", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA38 - Organoids and Organs-on-a-Chip", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}], "Imaging and Biomedical Devices: Assistive Technologies": [{"title": "OA52 - Assistive Technologies to Support Locomotion - Part I", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA65 - Assistive Technologies to Support Locomotion - Part II", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}], "Imaging and Biomedical Devices: Imaging Fundamentals and Applied Research": [{"title": "OA10 - Contrast-Enhanced Imaging", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA173 - Biomechanical Imaging", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA185 - AI in Imaging 1", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA197 - AI in Imaging 2", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Injury Biomechanics": [{"title": "OA6 - Field Measurements of Injury", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA19 - Experimental Modeling of Injury 1", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA32 - Experimental Modeling of Injury II", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA45 - Computational Modeling of Injury I", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA58 - Computational Modeling of Injury II", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA121 - Motor Vehicle-Related Injury", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA133 - Concussion/Brain Injury 1", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA145 - Concussion/Brain Injury II", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA169 - Concussion/Brain Injury III", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA181 - Military Trauma", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA193 - Spine Biomechanics and Injury", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Micro/Biofluidics: Experiments": [{"title": "OA51 - Microfluidics I", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA90 - Microfluidics II", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}], "Micro/Biofluidics: In Silico Models and Simulation": [{"title": "OA26 - Cilia and Fagella", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA39 - Microcirculation", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA78 - Biofluidic Flow", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA104 - Biomedical and Biological Systems and Applications", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}], "Molecular Biomechanics": [{"title": "OA91 - Supramolecular Collagen (Fibril) Biomechanics", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}], "Musculoskeletal Biomechanics: Joints and Motion": [{"title": "OA8 - Movement Adaptations and Knee Function Control", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA21 - Spine and Upper Body Joint Motion", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA34 - Functional Loading and Mechanics of the Lower Extremity", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA135 - Imaging Advancements for Joint Motion", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA147 - Running Biomechanics and Tissue Loading", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA159 - Data-Driven Representation of Joint Motion", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA171 - Developmental Bone Morphology and Joint Loading", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA183 - Joint Morphology, Pathology, and Loading", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA195 - Knee Biomechanics and Osteoarthritis", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Musculoskeletal Biomechanics: Methods, Models and Applications": [{"title": "OA5 - Imaging-Based Musculoskeletal Biomechanics", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA18 - Clinical and Translational Biomechanics", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA31 - Statistical Shape Modeling in Musculoskeletal Biomechanics", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA44 - Morphology and Anthropometry in Human Biomechanics", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA57 - Markerless Motion Analysis and Tracking Accuracy", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA70 - Inverse Dynamics and Subject-Specific Predictive Modeling", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA83 - Ex Vivo and In Vitro Characterization of Tissue Mechanics", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA96 - Finite Element Analysis of Bone and Joint Mechanics", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA109 - Optimization of Neuromuscular Control in Human Movement", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA168 - In Vivo Biomechanical Characterization", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA180 - Bone Adaptation Under Mechanical Loading", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA192 - IMU-Based Musculoskeletal Kinematics and Kinetics", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Musculoskeletal Biomechanics: Tissues": [{"title": "OA87 - Tendon and Ligament Biomechanics", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA100 - Computational Modeling of Fiber-Reinforced Tissues", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA113 - MSK Tissue Development", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA125 - Bone Biomechanics", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA137 - Muscle Biomechanics", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA149 - Articular Cartilage Biomechanics", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA161 - Intervertebral Disc Biomechanics", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}], "Organ and Tissue Biomechanics": [{"title": "OA7 - Characterization of Organ and Tissue Biomechanics, In Vivo and In Vitro", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA71 - Emerging Areas in Organ Biomechanics", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA84 - Cardiovascular Biomechanics", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA97 - Skin Biomechanics", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA110 - Biomechanics of Cancer and Gastric Diseases", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA122 - Biomechanics of Bone Metabolism and Osteoporosis", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA134 - Liver Biomechanics", "date": "14th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA158 - Ocular Biomechanics", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA170 - Biomechanics of the Female Reproductive System", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA182 - Knee Joint and Osteoarthritis", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA194 - Spine in Health and Disease", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Orthopaedic Biomechanics: Lower Extremities": [{"title": "OA47 - Knee Arthroplasty & Patellofemoral Biomechanics", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA60 - Implant Performance: Wear, Damage, and Retrieval Analysis", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA73 - Knee Osteoarthritis: Contact Forces, Alignment, and Cartilage Change", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA86 - Foot and Ankle Biomechanics: Morphology, Function, and Reconstruction", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA99 - Hip Biomechanics: Morphology, Function, and Reconstruction", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}], "Orthopaedic Biomechanics: Spine": [{"title": "OA23 - In Vivo Spine Biomechanics", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA36 - In Vitro Spine Biomechanics", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA49 -  Computational Spine Biomechanics", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA62 - Spine Imaging and Measurement", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}], "Orthopaedic Biomechanics: Sports Medicine": [{"title": "OA13 - Muscle Biomechanics – Locomotion and Neuromuscular System", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA188 - Bone and Joint Biomechanics - Regeneration and Remodeling", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA200 - Tendon Biomechanics – Injury and Adaptation", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Orthopaedic Biomechanics: Trauma and Repair": [{"title": "OA151 - Tendon and Ligament Repair", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA163 - Joint and Muscle Health", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA175 - Fracture Fixation and Healing", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}], "Orthopaedic Biomechanics: Upper Extremities": [{"title": "OA24 - AI & Computational Modeling", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA37 - Imaging, Sensing & Measurement Technologies", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA76 - Injury, Rehabilitation & Clinical Biomechanics", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}], "Rehabilitation Biomechanics and Human Factors: Occupational Biomechanics": [{"title": "OA150 - Pathophysiology of Occupational Upper Extremity Disorders", "date": "14th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA162 - Occupational Biomechanics of the Spine", "date": "15th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA174 - Occupational Biomechanics Technology", "date": "15th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA186 - Occupational Biomechanics of the Shoulder", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}], "Rehabilitation Biomechanics and Human Factors: Rehabilitation": [{"title": "OA20 - Biomechanically-Informed Rehabilitation Interventions", "date": "11th Jul 26", "start": "16:00", "end": "17:00"}, {"title": "OA33 - Neuromechanics in Wearable Exoskeletons", "date": "12th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA46 - Biomechanics in Bionic Limbs", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA59 - Wearables for Rehabilitation Tracking", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA72 - Biomechanics of Lower Limb Rehabilitation", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA85 - Movement Neuromechanics", "date": "13th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA98 - Biomechanics of Musculoskeletal Rehabilitation", "date": "13th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA111 - Neurorehabilitation Technologies", "date": "14th Jul 26", "start": "09:30", "end": "10:30"}, {"title": "OA123 - MISSING SESSION NAME", "date": "14th Jul 26", "start": "11:30", "end": "12:30"}], "Tissue Engineering: Mechanobiology": [{"title": "OA64 - Cardiovascular Mechanobiology in Tissue Engineering", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA77 - Tissue Engineered Models for Physiology and Developmental Mechanobiology", "date": "12th Jul 26", "start": "17:00", "end": "18:00"}, {"title": "OA187 - Orthopaedic Mechanobiology in Tissue Engineering 1", "date": "15th Jul 26", "start": "13:30", "end": "14:30"}, {"title": "OA199 - Orthopaedic Mechanobiology in Tissue Engineering 2", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}], "Tissue Engineering: Methods, Models and Applications": [{"title": "OA11 - Tissue Engineered Disease Models", "date": "11th Jul 26", "start": "14:30", "end": "15:30"}, {"title": "OA50 - Biofabrication in Tissue Engineering", "date": "12th Jul 26", "start": "11:30", "end": "12:30"}, {"title": "OA63 - Imaging, Sensing, and Automation for Cell and Tissue Culture", "date": "12th Jul 26", "start": "15:00", "end": "16:00"}, {"title": "OA198 - Computational Tools for Tissue Engineering", "date": "15th Jul 26", "start": "14:45", "end": "15:45"}]};
+
+    // Each track has: [riddleText, acceptableAnswers[]]
+    const TRACK_RIDDLES = {"Biomechanics Education, Knowledge Translation and Outreach": ["I spread biomechanics beyond the lab—turning research into practice. What single word describes moving evidence into real-world use?", ["translation"]], "Cardiovascular/Cardiorespiratory Biomechanics: Materials and Devices": ["I’m a tiny door in the heart that opens and closes to direct flow. Name the structure (one word).", ["valve"]], "Cardiovascular/Cardiorespiratory Biomechanics: Methods, Models and Applications": ["In flow models, this dimensionless number compares inertia to viscosity. Type its name (one word).", ["reynolds"]], "Cell Biomechanics: Mechanobiology": ["Cells ‘feel’ force through proteins that link the cytoskeleton to the matrix. What word describes this force-sensing process?", ["mechanotransduction", "transduction"]], "Cell Biomechanics: Methods and Models": ["To measure cell stiffness, a tiny cantilever taps the surface. What technique is this? (3 letters)", ["afm"]], "Clinical Biomechanics": ["In gait analysis, the ground pushes back with a force we often abbreviate as ____. Type the 2-letter abbreviation.", ["grf"]], "Comparative Biomechanics": ["I compare how different species move and survive. What is the one-word field of studying animals in motion?", ["locomotion"]], "Emerging Areas": ["New ideas often start as a ‘what if’. In science, we test a ____ to learn the truth. One word.", ["hypothesis"]], "Human Motion and Performance: Balance, Posture and Control": ["When your body sways, your control system tries to keep your ____ of mass over your base of support. One word.", ["center", "com"]], "Human Motion and Performance: Locomotion/Gait": ["A gait cycle is often split into stance and ____. One word.", ["swing"]], "Human Motion and Performance: Sports": ["Power equals force times ____. One word.", ["velocity"]], "Imaging and Biomedical Devices: Artificial Organs, Devices": ["A device that electrically stimulates the heart to maintain rhythm is a ____.", ["pacemaker"]], "Imaging and Biomedical Devices: Assistive Technologies": ["A wearable support that helps a limb move is commonly called an ____. One word.", ["exoskeleton"]], "Imaging and Biomedical Devices: Imaging Fundamentals and Applied Research": ["In medical imaging, MRI stands for magnetic resonance ____. One word.", ["imaging"]], "Injury Biomechanics": ["Tissue damage often depends on force and time—also known as ____.", ["impulse"]], "Micro/Biofluidics: Experiments": ["In microfluidics, flow is usually smooth and layered—this is called ____ flow.", ["laminar"]], "Micro/Biofluidics: In Silico Models and Simulation": ["A common numerical method for fluids is computational fluid dynamics: ____. (3 letters)", ["cfd"]], "Molecular Biomechanics": ["The protein motor that walks along actin in muscle is ____.", ["myosin"]], "Musculoskeletal Biomechanics: Joints and Motion": ["The joint’s ‘rotation point’ in 2D mechanics is the ____ of rotation.", ["center"]], "Musculoskeletal Biomechanics: Methods, Models and Applications": ["A classic method to model bones/implants by splitting into small elements is ____ element analysis. One word.", ["finite", "fea"]], "Musculoskeletal Biomechanics: Tissues": ["The main mineral that makes bone hard is hydroxy_____. (type the missing word)", ["apatite"]], "Organ and Tissue Biomechanics": ["Many soft tissues are visco_____: they behave like both solids and fluids. Type the missing part.", ["elastic", "elasticity"]], "Orthopaedic Biomechanics: Lower Extremities": ["The largest tendon in the body, critical for walking and jumping, is the ____ tendon.", ["achilles"]], "Orthopaedic Biomechanics: Spine": ["Between vertebrae sits a shock absorber called the intervertebral ____.", ["disc", "disk"]], "Orthopaedic Biomechanics: Sports Medicine": ["A common knee ligament injured in sport is the ____. (3 letters)", ["acl"]], "Orthopaedic Biomechanics: Trauma and Repair": ["To stabilize fractures, surgeons often use a metal ____.", ["plate"]], "Orthopaedic Biomechanics: Upper Extremities": ["The shoulder’s ‘ball-and-socket’ joint is the gleno_____. Type the missing word.", ["humeral"]], "Rehabilitation Biomechanics and Human Factors: Occupational Biomechanics": ["When designing work tasks, we try to reduce cumulative ____ on the body. One word.", ["load"]], "Rehabilitation Biomechanics and Human Factors: Rehabilitation": ["In rehab, practice that improves movement through learning is motor ____.", ["learning"]], "Tissue Engineering: Mechanobiology": ["Engineered tissues often grow in a device that applies flow/stretch called a ____.", ["bioreactor"]], "Tissue Engineering: Methods, Models and Applications": ["A 3D scaffold often aims to mimic the extracellular ____. (3 letters)", ["ecm"]]};
+
+    // 31 map node positions in percent (left, top)
+    const NODE_POSITIONS = [[61.7, 13.9], [31.1, 29.0], [69.9, 63.4], [82.9, 18.6], [43.4, 14.3], [26.4, 50.4], [10.2, 27.1], [62.6, 53.4], [76.0, 12.5], [88.4, 37.6], [15.8, 19.4], [79.2, 57.9], [53.0, 86.0], [39.8, 54.0], [61.4, 39.7], [30.4, 83.2], [22.4, 67.4], [21.7, 40.8], [91.1, 60.6], [54.8, 64.0], [78.8, 71.0], [27.2, 14.4], [84.8, 46.9], [55.2, 32.0], [41.5, 28.7], [17.2, 59.7], [74.5, 44.1], [89.6, 77.4], [9.0, 66.8], [30.4, 60.7], [59.2, 23.6]];
+
+    // =========================
+    // 2) GAME STATE
+    // =========================
+    const STORAGE_KEY = "wcb2026_vancouver_knowledge_map_unlocked_v1";
+    const tracks = Object.keys(TRACK_SESSIONS);
+
+    // Load saved progress (if any)
+    let unlocked = new Set();
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      if (Array.isArray(saved)) unlocked = new Set(saved.filter(t => tracks.includes(t)));
+    } catch (e) {
+      unlocked = new Set();
+    }
+
+    // Current selection
+    let currentTrack = null;
+
+    // =========================
+    // 3) ELEMENTS
+    // =========================
+    const mapEl = document.getElementById("map");
+    const missionEl = document.getElementById("mission");
+    const modal = document.getElementById("modal");
+    const modalTrack = document.getElementById("modalTrack");
+    const modalRiddle = document.getElementById("modalRiddle");
+    const answerInput = document.getElementById("answerInput");
+    const modalMsg = document.getElementById("modalMsg");
+    const counterEl = document.getElementById("counter");
+    const barFill = document.getElementById("barFill");
+    const shareBtn = document.getElementById("shareBtn");
+    const shareText = document.getElementById("shareText");
+    const resetBtn = document.getElementById("resetBtn");
+    const toast = document.getElementById("toast");
+
+    // =========================
+    // 4) UTILITIES
+    // =========================
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[s]);
+    }
+
+    function normAnswer(s) {
+      return String(s || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+    }
+
+    function saveProgress() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(unlocked)));
+    }
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      window.clearTimeout(showToast._t);
+      showToast._t = window.setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function updateProgressUI() {
+      const done = unlocked.size;
+      const total = tracks.length;
+      counterEl.textContent = `Tracks Decoded: ${done}/${total}`;
+      const pct = Math.round((done / total) * 100);
+      barFill.style.width = pct + "%";
+    }
+
+    function percentComplete() {
+      return Math.round((unlocked.size / tracks.length) * 100);
+    }
+
+    // =========================
+    // 5) RENDER NODES
+    // =========================
+    function renderNodes() {
+      // Clear existing (if any)
+      const existing = mapEl.querySelectorAll(".node");
+      existing.forEach(n => n.remove());
+
+      tracks.forEach((track, idx) => {
+        const pos = NODE_POSITIONS[idx] || [50, 50];
+        const node = document.createElement("div");
+        node.className = "node" + (unlocked.has(track) ? " unlocked" : "");
+        node.style.left = pos[0] + "%";
+        node.style.top = pos[1] + "%";
+        node.title = unlocked.has(track) ? `Unlocked: ${track}` : `Locked: ${track}`;
+        node.setAttribute("role", "button");
+        node.setAttribute("tabindex", "0");
+        node.setAttribute("aria-label", unlocked.has(track) ? `Unlocked track node: ${track}` : `Locked track node: ${track}`);
+        node.dataset.track = track;
+
+        node.addEventListener("click", () => onNodeClick(track));
+        node.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onNodeClick(track);
+          }
+        });
+
+        mapEl.appendChild(node);
+      });
+    }
+
+    // =========================
+    // 6) GAME FLOW
+    // =========================
+    function onNodeClick(track) {
+      currentTrack = track;
+
+      if (unlocked.has(track)) {
+        renderMissionCard(track);
+        showToast("Track already decoded ✅");
+        return;
+      }
+
+      // Open riddle modal
+      const r = TRACK_RIDDLES[track];
+      modalTrack.textContent = track;
+      modalRiddle.textContent = r ? r[0] : "Solve the puzzle to unlock this track.";
+      modalMsg.textContent = "";
+      modalMsg.classList.remove("bad");
+      answerInput.value = "";
+      openModal();
+      setTimeout(() => answerInput.focus(), 50);
+    }
+
+    function openModal() {
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeModal() {
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function tryUnlock() {
+      if (!currentTrack) return;
+
+      const r = TRACK_RIDDLES[currentTrack];
+      const acceptable = (r && Array.isArray(r[1])) ? r[1] : [];
+      const guess = normAnswer(answerInput.value);
+
+      const ok = acceptable.some(a => normAnswer(a) === guess);
+
+      if (!ok) {
+        modalMsg.textContent = "Not quite — try the core term (one word or abbreviation).";
+        modalMsg.classList.add("bad");
+        return;
+      }
+
+      // Success
+      unlocked.add(currentTrack);
+      saveProgress();
+      updateProgressUI();
+      renderNodes(); // refresh node styling
+      closeModal();
+      showToast("Track unlocked! 🟢");
+
+      renderMissionCard(currentTrack);
+    }
+
+    function renderMissionCard(track) {
+      const sessions = TRACK_SESSIONS[track] || [];
+      const r = TRACK_RIDDLES[track];
+      const keyword = r && r[1] && r[1][0] ? r[1][0] : "decoded";
+
+      const sessionsHtml = sessions.map(s => {
+        const when = `${escapeHtml(s.date)} • ${escapeHtml(s.start)}–${escapeHtml(s.end)}`;
+        return `
+          <div class="session">
+            <div class="t">${escapeHtml(s.title)}</div>
+            <div class="m">${when}</div>
+          </div>
+        `;
+      }).join("");
+
+      missionEl.innerHTML = `
+        <div class="card">
+          <div class="label">Mission Card</div>
+          <div class="big">${escapeHtml(track)}</div>
+          <div class="meta">Status: <strong style="color: var(--emerald);">Unlocked</strong> • Key used: <strong>${escapeHtml(keyword)}</strong></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Sessions</div>
+          <div class="hint">These are the real session titles and times from your attached schedule file.</div>
+          <div class="sessions">${sessionsHtml || `<div class="hint">No sessions found for this track.</div>`}</div>
+        </div>
+
+        <div class="card">
+          <div class="label">Share this win</div>
+          <div class="hint">Click “Share My Status” to generate a LinkedIn-ready line (auto-copies if your browser allows).</div>
+          <textarea id="shareText" placeholder="Your share text will appear here..."></textarea>
+        </div>
+      `;
+
+      // rebind shareText (because we replaced innerHTML)
+      const newShareText = document.getElementById("shareText");
+      if (newShareText) {
+        newShareText.value = shareText.value || "";
+      }
+    }
+
+    function makeShareString(trackName = null) {
+      const pct = percentComplete();
+      const name = trackName || (currentTrack || "a track");
+      return `I just decoded the ${name} track at #WCB2026. My Vancouver journey is ${pct}% complete! 🔬`;
+    }
+
+    async function shareStatus() {
+      const text = makeShareString(currentTrack);
+      // Put it in the textarea (whether or not clipboard works)
+      const activeShareBox = document.getElementById("shareText");
+      if (activeShareBox) activeShareBox.value = text;
+
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Copied to clipboard 📋");
+      } catch (e) {
+        showToast("Share text generated (copy manually) ✍️");
+      }
+    }
+
+    function resetProgress() {
+      unlocked = new Set();
+      localStorage.removeItem(STORAGE_KEY);
+      updateProgressUI();
+      renderNodes();
+      currentTrack = null;
+
+      // Reset mission panel to intro
+      missionEl.innerHTML = `
+        <div class="card">
+          <div class="label">How it works</div>
+          <div class="big">Decode all 31 tracks</div>
+          <div class="meta">
+            Each node hides a track. Answer the keyword correctly to reveal the real WCB 2026 sessions for that track.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="label">Tip</div>
+          <div class="hint">
+            Keywords are simple and case-insensitive (e.g., <strong>Reynolds</strong>, <strong>AFM</strong>, <strong>laminar</strong>). If you’re close, try the core term.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="label">Share</div>
+          <div class="hint">
+            Use “Share My Status” anytime to generate a LinkedIn-ready line about your progress.
+          </div>
+          <textarea id="shareText" placeholder="Your share text will appear here..."></textarea>
+        </div>
+      `;
+
+      showToast("Progress reset.");
+    }
+
+    // =========================
+    // 7) WIRE UP EVENTS
+    // =========================
+    document.getElementById("closeModal").addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
+    });
+    document.getElementById("unlockBtn").addEventListener("click", tryUnlock);
+    answerInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        tryUnlock();
+      }
+    });
+
+    shareBtn.addEventListener("click", shareStatus);
+    resetBtn.addEventListener("click", resetProgress);
+
+    // =========================
+    // 8) INIT
+    // =========================
+    updateProgressUI();
+    renderNodes();
+  </script>
+</body>
+</html>
